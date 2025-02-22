@@ -1,6 +1,11 @@
 # This module defines global configuration for the xonsh.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
 
@@ -34,7 +39,9 @@ in
 
       extraPackages = lib.mkOption {
         default = (ps: [ ]);
-        type = with lib.types; coercedTo (listOf lib.types.package) (v: (_: v)) (functionTo (listOf lib.types.package));
+        type =
+          with lib.types;
+          coercedTo (listOf lib.types.package) (v: (_: v)) (functionTo (listOf lib.types.package));
         description = ''
           Add the specified extra packages to the xonsh package.
           Preferred over using `programs.xonsh.package` as it composes with `programs.xonsh.xontribs`.

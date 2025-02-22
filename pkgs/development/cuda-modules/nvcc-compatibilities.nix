@@ -109,7 +109,11 @@ let
     "12.6" = attrs."12.4" // {
       clangMaxMajorVersion = "18";
     };
-
+    
+    # No changes from 12.6 to 12.8
+    "12.8" = attrs."12.6" // {
+      clangMaxMajorVersion = "18";
+    };
   };
 in
 attrs

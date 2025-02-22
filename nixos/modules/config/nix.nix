@@ -6,8 +6,13 @@
    - ./nix-flakes.nix
    - ./nix-remote-build.nix
    - nixos/modules/services/system/nix-daemon.nix
- */
-{ config, lib, pkgs, ... }:
+*/
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   inherit (lib)
@@ -60,19 +65,21 @@ let
     systemFeatures = "system-features";
   };
 
-  semanticConfType = with types;
+  semanticConfType =
+    with types;
     let
-      confAtom = nullOr
-        (oneOf [
+      confAtom =
+        nullOr (oneOf [
           bool
           int
           float
           str
           path
           package
-        ]) // {
-        description = "Nix config atom (null, bool, int, float, str, path or package)";
-      };
+        ])
+        // {
+          description = "Nix config atom (null, bool, int, float, str, path or package)";
+        };
     in
     attrsOf (either confAtom (listOf confAtom));
 
@@ -80,17 +87,28 @@ let
     assert isNixAtLeast "2.2";
     let
 
-      mkValueString = v:
-        if v == null then ""
-        else if isInt v then toString v
-        else if isBool v then boolToString v
-        else if isFloat v then floatToString v
-        else if isList v then toString v
-        else if isDerivation v then toString v
-        else if builtins.isPath v then toString v
-        else if isString v then v
-        else if strings.isConvertibleWithToString v then toString v
-        else abort "The nix conf value: ${toPretty {} v} can not be encoded";
+      mkValueString =
+        v:
+        if v == null then
+          ""
+        else if isInt v then
+          toString v
+        else if isBool v then
+          boolToString v
+        else if isFloat v then
+          floatToString v
+        else if isList v then
+          toString v
+        else if isDerivation v then
+          toString v
+        else if builtins.isPath v then
+          toString v
+        else if isString v then
+          v
+        else if strings.isConvertibleWithToString v then
+          toString v
+        else
+          abort "The nix conf value: ${toPretty { } v} can not be encoded";
 
       mkKeyValue = k: v: "${escape [ "=" ] k} = ${mkValueString v}";
 
@@ -112,41 +130,71 @@ let
         ${cfg.extraOptions}
       '';
       checkPhase = lib.optionalString cfg.checkConfig (
-        if pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform then ''
-          echo "Ignoring validation for cross-compilation"
-        ''
+        if pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform then
+          ''
+            echo "Ignoring validation for cross-compilation"
+          ''
         else
-        let
-          showCommand = if isNixAtLeast "2.20pre" then "config show" else "show-config";
-        in
-        ''
-          echo "Validating generated nix.conf"
-          ln -s $out ./nix.conf
-          set -e
-          set +o pipefail
-          NIX_CONF_DIR=$PWD \
-            ${cfg.package}/bin/nix ${showCommand} ${optionalString (isNixAtLeast "2.3pre") "--no-net"} \
-              ${optionalString (isNixAtLeast "2.4pre") "--option experimental-features nix-command"} \
-            |& sed -e 's/^warning:/error:/' \
-            | (! grep '${if cfg.checkAllErrors then "^error:" else "^error: unknown setting"}')
-          set -o pipefail
-        '');
+          let
+            showCommand = if isNixAtLeast "2.20pre" then "config show" else "show-config";
+          in
+          ''
+            echo "Validating generated nix.conf"
+            ln -s $out ./nix.conf
+            set -e
+            set +o pipefail
+            NIX_CONF_DIR=$PWD \
+              ${cfg.package}/bin/nix ${showCommand} ${optionalString (isNixAtLeast "2.3pre") "--no-net"} \
+                ${optionalString (isNixAtLeast "2.4pre") "--option experimental-features nix-command"} \
+              |& sed -e 's/^warning:/error:/' \
+              | (! grep '${if cfg.checkAllErrors then "^error:" else "^error: unknown setting"}')
+            set -o pipefail
+          ''
+      );
     };
 
 in
 {
-  imports = [
-    (mkRenamedOptionModuleWith { sinceRelease = 2003; from = [ "nix" "useChroot" ]; to = [ "nix" "useSandbox" ]; })
-    (mkRenamedOptionModuleWith { sinceRelease = 2003; from = [ "nix" "chrootDirs" ]; to = [ "nix" "sandboxPaths" ]; })
-  ] ++
-    mapAttrsToList
-      (oldConf: newConf:
-        mkRenamedOptionModuleWith {
-          sinceRelease = 2205;
-          from = [ "nix" oldConf ];
-          to = [ "nix" "settings" newConf ];
+  imports =
+    [
+      (mkRenamedOptionModuleWith {
+        sinceRelease = 2003;
+        from = [
+          "nix"
+          "useChroot"
+        ];
+        to = [
+          "nix"
+          "useSandbox"
+        ];
       })
-      legacyConfMappings;
+      (mkRenamedOptionModuleWith {
+        sinceRelease = 2003;
+        from = [
+          "nix"
+          "chrootDirs"
+        ];
+        to = [
+          "nix"
+          "sandboxPaths"
+        ];
+      })
+    ]
+    ++ mapAttrsToList (
+      oldConf: newConf:
+      mkRenamedOptionModuleWith {
+        sinceRelease = 2205;
+        from = [
+          "nix"
+          oldConf
+        ];
+        to = [
+          "nix"
+          "settings"
+          newConf
+        ];
+      }
+    ) legacyConfMappings;
 
   options = {
     nix = {
@@ -245,7 +293,10 @@ in
             extra-sandbox-paths = mkOption {
               type = types.listOf types.str;
               default = [ ];
-              example = [ "/dev" "/proc" ];
+              example = [
+                "/dev"
+                "/proc"
+              ];
               description = ''
                 Directories from the host filesystem to be included
                 in the sandbox.
@@ -301,7 +352,11 @@ in
 
             trusted-users = mkOption {
               type = types.listOf types.str;
-              example = [ "root" "alice" "@wheel" ];
+              example = [
+                "root"
+                "alice"
+                "@wheel"
+              ];
               description = ''
                 A list of names of users that have additional rights when
                 connecting to the Nix daemon, such as the ability to specify
@@ -340,7 +395,12 @@ in
             allowed-users = mkOption {
               type = types.listOf types.str;
               default = [ "*" ];
-              example = [ "@wheel" "@builders" "alice" "bob" ];
+              example = [
+                "@wheel"
+                "@builders"
+                "alice"
+                "bob"
+              ];
               description = ''
                 A list of names of users (separated by whitespace) that are
                 allowed to connect to the Nix daemon. As with
